@@ -15,10 +15,7 @@ async def scan_all_subscriptions():
     from modules.subdomain_enum import enumerate_subdomains
     from modules.threat_intel import get_latam_threats
     from modules.scorer import calculate_score
-
     subscriptions = get_all_subscriptions()
-    logger.info(f"Escaneando {len(subscriptions)} suscripciones...")
-
     for sub in subscriptions:
         try:
             domain = sub["domain"]
@@ -43,7 +40,6 @@ def start_scheduler():
     scheduler.add_job(scan_all_subscriptions, trigger=IntervalTrigger(hours=24),
                       id="daily_scan", replace_existing=True)
     scheduler.start()
-    logger.info("Scheduler iniciado")
 
 def stop_scheduler():
     if scheduler.running:
