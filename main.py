@@ -152,3 +152,7 @@ if os.path.exists(static_dir):
 @app.get("/dashboard")
 def dashboard():
     return FileResponse(os.path.join(static_dir, "index.html"))
+
+@app.get("/org-risk")
+def org_risk():
+    return FileResponse(os.path.join(static_dir, "org-risk.html"))

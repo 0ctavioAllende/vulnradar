@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VulnRadar — Org Risk Profile</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080a0f;
+      --bg2: #0c0f16;
+      --surface: rgba(255,255,255,0.03);
+      --surface2: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.12);
+      --text: #eef0f8;
+      --muted: #4b5263;
+      --muted2: #6b7384;
+      --accent: #e03535;
+      --accent2: #ff5f35;
+      --low: #34d399;
+      --medium: #fbbf24;
+      --high: #f97316;
+      --critical: #ef4444;
+      --info: #60a5fa;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Sora', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(8,10,15,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .header-l { display: flex; align-items: center; gap: 16px; }
+    .back-link {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--mono); font-size: 11px;
+      color: var(--muted2); text-decoration: none;
+      padding: 5px 10px; border: 1px solid var(--border);
+      border-radius: 6px; transition: all 0.2s;
+    }
+    .back-link:hover { color: var(--text); border-color: var(--border2); }
+    .header-title {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .header-title .tag {
+      font-family: var(--mono); font-size: 9px; font-weight: 500;
+      color: var(--accent); background: rgba(224,53,53,0.1);
+      border: 1px solid rgba(224,53,53,0.2);
+      padding: 2px 8px; border-radius: 4px; letter-spacing: 1px;
+    }
+    .header-r { display: flex; align-items: center; gap: 10px; }
+    .live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--low); box-shadow: 0 0 8px var(--low);
+      animation: pulse 2s infinite;
+    }
+    .live-label { font-family: var(--mono); font-size: 10px; color: var(--muted2); }
+
+    /* ── MAIN ── */
+    .main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; position: relative; z-index: 1; }
+
+    /* ── SEARCH SECTION ── */
+    .search-box {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 32px;
+    }
+    .search-label {
+      font-family: var(--mono); font-size: 10px; font-weight: 500;
+      color: var(--muted2); letter-spacing: 1.5px; text-transform: uppercase;
+      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .search-label::before {
+      content: ''; width: 3px; height: 12px;
+      background: var(--accent); border-radius: 2px;
+    }
+    .search-row { display: flex; gap: 10px; }
+    .search-input {
+      flex: 1; background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 12px 16px;
+      font-family: var(--mono); font-size: 14px; color: var(--text);
+      outline: none; transition: all 0.2s;
+    }
+    .search-input:focus { border-color: rgba(224,53,53,0.4); box-shadow: 0 0 0 3px rgba(224,53,53,0.08); }
+    .search-input::placeholder { color: var(--muted); }
+    .btn-scan {
+      background: var(--accent); color: white;
+      border: none; border-radius: 10px;
+      padding: 12px 28px; font-family: 'Sora', sans-serif;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-scan:hover { background: #c42d2d; transform: translateY(-1px); }
+    .btn-scan:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-scan svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+
+    /* ── PROGRESS ── */
+    .progress-wrap { margin-top: 16px; display: none; }
+    .progress-track { height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; }
+    .progress-fill { height: 2px; background: var(--accent); width: 0%; transition: width 0.1s linear; border-radius: 1px; }
+    .progress-label { font-family: var(--mono); font-size: 10px; color: var(--muted2); margin-top: 8px; }
+
+    /* ── RESULTS ── */
+    #results { display: none; }
+
+    /* ── ORG HEADER ── */
+    .org-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 24px; gap: 16px;
+    }
+    .org-identity { display: flex; align-items: center; gap: 16px; }
+    .org-bar { width: 3px; height: 52px; background: var(--accent); border-radius: 2px; flex-shrink: 0; }
+    .org-domain {
+      font-family: var(--mono); font-size: 22px; font-weight: 500;
+      color: var(--text); letter-spacing: -0.5px;
+    }
+    .org-meta { font-size: 11px; color: var(--muted2); margin-top: 3px; }
+    .org-meta span { color: var(--accent); }
+    .scan-time { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: right; }
+
+    /* ── SCORE CARDS ── */
+    .score-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      gap: 10px; margin-bottom: 24px;
+    }
+    .score-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 14px;
+    }
+    .score-card.main-card { border-color: rgba(224,53,53,0.2); }
+    .score-card-label {
+      font-family: var(--mono); font-size: 9px; font-weight: 500;
+      color: var(--muted2); letter-spacing: 1px; text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .score-card-value {
+      font-family: var(--mono); font-size: 28px; font-weight: 500; line-height: 1;
+    }
+    .score-card-value.main { font-size: 32px; }
+    .score-card-level { font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: 1px; margin-top: 3px; }
+    .score-bar-track { height: 2px; background: var(--border); border-radius: 1px; margin-top: 10px; }
+    .score-bar-fill { height: 2px; border-radius: 1px; transition: width 1s ease; }
+
+    /* ── SECTION ── */
+    .section { margin-bottom: 20px; }
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 12px; font-weight: 600; color: var(--text);
+      letter-spacing: 0.3px;
+    }
+    .section-badge {
+      font-family: var(--mono); font-size: 9px; font-weight: 500;
+      padding: 2px 8px; border-radius: 4px; letter-spacing: 0.5px;
+    }
+    .badge-red { background: rgba(239,68,68,0.1); color: var(--critical); border: 1px solid rgba(239,68,68,0.2); }
+    .badge-amber { background: rgba(251,191,36,0.1); color: var(--medium); border: 1px solid rgba(251,191,36,0.2); }
+    .badge-green { background: rgba(52,211,153,0.1); color: var(--low); border: 1px solid rgba(52,211,153,0.2); }
+    .badge-gray { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border); }
+
+    /* ── TABLE ── */
+    .table-wrap {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      padding: 10px 14px; text-align: left;
+      font-family: var(--mono); font-size: 9px; font-weight: 500;
+      color: var(--muted2); letter-spacing: 1px; text-transform: uppercase;
+      background: var(--surface2); border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 9px 14px; font-family: var(--mono); font-size: 11px;
+      color: var(--muted2); border-bottom: 1px solid var(--border);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(255,255,255,0.02); color: var(--text); }
+    .td-domain { color: var(--text) !important; font-size: 11px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ok { color: var(--low) !important; }
+    .warn { color: var(--medium) !important; }
+    .fail { color: var(--critical) !important; }
+    .vt-clean { color: var(--muted2) !important; }
+    .vt-flagged { color: var(--critical) !important; font-weight: 500; }
+
+    /* ── BCRA NOTICE ── */
+    .bcra-notice {
+      background: rgba(224,53,53,0.05); border: 1px solid rgba(224,53,53,0.15);
+      border-radius: 12px; padding: 14px 18px;
+      display: flex; align-items: flex-start; gap: 12px; margin-top: 20px;
+    }
+    .bcra-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .bcra-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .bcra-text { font-size: 11px; color: var(--muted2); line-height: 1.6; }
+    .bcra-text strong { color: var(--accent); }
+
+    /* ── THREAT CARD ── */
+    .threat-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 8px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .threat-sev {
+      font-family: var(--mono); font-size: 9px; font-weight: 500;
+      padding: 3px 8px; border-radius: 4px; flex-shrink: 0;
+      margin-top: 1px; letter-spacing: 0.5px;
+    }
+    .sev-critical { background: rgba(239,68,68,0.1); color: var(--critical); border: 1px solid rgba(239,68,68,0.2); }
+    .sev-high { background: rgba(249,115,22,0.1); color: var(--high); border: 1px solid rgba(249,115,22,0.2); }
+    .sev-medium { background: rgba(251,191,36,0.1); color: var(--medium); border: 1px solid rgba(251,191,36,0.2); }
+    .threat-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .threat-desc { font-size: 11px; color: var(--muted2); line-height: 1.6; }
+    .threat-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    /* ── EMPTY ── */
+    .empty { padding: 28px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    @keyframes fadein { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .fadein { animation: fadein 0.4s ease both; }
+    .spinner {
+      width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: white; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-l">
+    <a href="/dashboard" class="back-link">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Dashboard
+    </a>
+    <div class="header-title">
+      Org Risk Profile
+      <span class="tag">BETA</span>
+    </div>
+  </div>
+  <div class="header-r">
+    <div class="live-dot"></div>
+    <span class="live-label">VulnRadar v1.2.0</span>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- SEARCH -->
+  <div class="search-box">
+    <div class="search-label">Organización a analizar</div>
+    <div class="search-row">
+      <input
+        type="text" id="domain-input" class="search-input"
+        placeholder="ej: galicia.ar, santander.com.ar, bbva.com.ar"
+        value=""
+      />
+      <button class="btn-scan" id="btn-scan" onclick="runScan()">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Escanear
+      </button>
+    </div>
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-label" id="progress-label">Iniciando scan...</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <!-- ORG HEADER -->
+    <div class="org-header fadein">
+      <div class="org-identity">
+        <div class="org-bar"></div>
+        <div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--muted2);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">VulnRadar · Org Risk Profile</div>
+          <div class="org-domain" id="org-domain">—</div>
+          <div class="org-meta">Scan completado · <span id="scan-time">—</span></div>
+        </div>
+      </div>
+      <div class="scan-time" id="score-level-display"></div>
+    </div>
+
+    <!-- SCORE CARDS -->
+    <div class="score-grid fadein" id="score-grid"></div>
+
+    <!-- ATTACK SURFACE -->
+    <div class="section fadein">
+      <div class="section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        <span class="section-title">Attack Surface Map</span>
+        <span class="section-badge" id="sub-badge"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Subdominio</th>
+            <th>SSL</th>
+            <th>Headers</th>
+            <th>VT Score</th>
+            <th>Tags VT</th>
+            <th>Riesgo</th>
+          </tr></thead>
+          <tbody id="tb-subdomains"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VT ENRICHMENT -->
+    <div class="section fadein">
+      <div class="section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="section-title">VirusTotal Enrichment</span>
+        <span class="section-badge badge-gray" id="vt-badge"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Target</th>
+            <th>Tipo</th>
+            <th>VT Score</th>
+            <th>Malicious</th>
+            <th>Suspicious</th>
+            <th>Reputación</th>
+            <th>Tags</th>
+          </tr></thead>
+          <tbody id="tb-vt"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CVEs -->
+    <div class="section fadein">
+      <div class="section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        <span class="section-title">CVE Exposure</span>
+        <span class="section-badge" id="cve-badge"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>CVE ID</th>
+            <th>Descripción</th>
+            <th>CVSS</th>
+            <th>CISA KEV</th>
+            <th>Severidad</th>
+          </tr></thead>
+          <tbody id="tb-cves"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LATAM THREATS -->
+    <div class="section fadein">
+      <div class="section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        <span class="section-title">Amenazas LATAM activas</span>
+        <span class="section-badge badge-amber" id="threat-badge"></span>
+      </div>
+      <div id="threats-list"></div>
+    </div>
+
+    <!-- BCRA NOTICE -->
+    <div class="bcra-notice fadein">
+      <div class="bcra-icon">🛡</div>
+      <div>
+        <div class="bcra-title">Marco regulatorio BCRA — Com. "A" 6375</div>
+        <div class="bcra-text" id="bcra-text">
+          Analizando hallazgos relevantes para el cumplimiento de Gestión de la Seguridad de la Información.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const API_BASE = '';
+
+const RISK_COLORS = {
+  low:      'var(--low)',
+  medium:   'var(--medium)',
+  high:     'var(--high)',
+  critical: 'var(--critical)',
+};
+
+const RISK_LABELS = {
+  low: 'Bajo', medium: 'Medio', high: 'Alto', critical: 'Crítico',
+};
+
+function badgeClass(level) {
+  return { low: 'badge-green', medium: 'badge-amber', high: 'badge-red', critical: 'badge-red' }[level] || 'badge-gray';
+}
+
+function riskBadge(level) {
+  const cls = badgeClass(level);
+  return `<span class="section-badge ${cls}" style="display:inline-block">${RISK_LABELS[level] || level}</span>`;
+}
+
+function sslIcon(data) {
+  if (!data) return '<span class="warn">—</span>';
+  if (!data.cert_valid) return '<span class="fail">✗ Inválido</span>';
+  if (data.days_remaining < 30) return `<span class="warn">⚠ ${data.days_remaining}d</span>`;
+  return '<span class="ok">✓ OK</span>';
+}
+
+function headerIcon(data) {
+  const missing = (data.headers_missing || []).length;
+  if (missing >= 3) return '<span class="fail">✗ ' + missing + ' faltantes</span>';
+  if (missing > 0)  return '<span class="warn">⚠ ' + missing + ' faltantes</span>';
+  return '<span class="ok">✓ OK</span>';
+}
+
+function vtScoreCell(vtData) {
+  if (!vtData || vtData.error) return '<span class="vt-clean">—</span>';
+  if (!vtData.found) return '<span class="vt-clean">0/0</span>';
+  const mal = vtData.malicious || 0;
+  if (mal > 0) return `<span class="vt-flagged">${vtData.vt_score}</span>`;
+  return `<span class="vt-clean">${vtData.vt_score}</span>`;
+}
+
+function scoreColor(score) {
+  if (score >= 70) return 'var(--critical)';
+  if (score >= 45) return 'var(--high)';
+  if (score >= 20) return 'var(--medium)';
+  return 'var(--low)';
+}
+
+function renderScoreCards(score) {
+  const bd = score.breakdown || {};
+  const cards = [
+    { label: 'Riesgo global', value: score.total, level: score.level, isMain: true },
+    { label: 'Headers',       value: bd.headers?.risk_points ?? '—',   max: bd.headers?.max ?? 30 },
+    { label: 'SSL / TLS',     value: bd.ssl?.risk_points ?? '—',       max: bd.ssl?.max ?? 25 },
+    { label: 'CVE Exposure',  value: bd.cves?.risk_points ?? '—',      max: bd.cves?.max ?? 25 },
+    { label: 'VT Intel',      value: bd.vt_intel?.risk_points ?? '—',  max: bd.vt_intel?.max ?? 10 },
+  ];
+
+  return cards.map(c => {
+    const color = c.isMain ? scoreColor(c.value) : scoreColor(c.value * (100 / (c.max || 1)));
+    const pct   = c.isMain ? c.value : Math.round((c.value / (c.max || 1)) * 100);
+    return `
+      <div class="score-card${c.isMain ? ' main-card' : ''}">
+        <div class="score-card-label">${c.label}</div>
+        <div class="score-card-value${c.isMain ? ' main' : ''}" style="color:${color}">${c.value}</div>
+        ${c.isMain ? `<div class="score-card-level" style="color:${color}">${RISK_LABELS[c.level] || c.level}</div>` : ''}
+        ${!c.isMain ? `<div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${color}"></div></div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function renderSubdomains(subdomains, vtEnrichment) {
+  if (!subdomains.length) return '<div class="empty">Sin subdominios detectados</div>';
+  return subdomains.map(s => {
+    const domain  = s.subdomain || s.domain || s.host || s.name || String(s);
+    const vtData  = vtEnrichment[domain] || null;
+    const tags    = vtData?.tags?.join(', ') || '—';
+    const risk    = s.risk || 'low';
+    return `<tr>
+      <td class="td-domain" title="${domain}">${domain}</td>
+      <td>${sslIcon(s.ssl || null)}</td>
+      <td>${headerIcon(s.headers || {})}</td>
+      <td>${vtScoreCell(vtData)}</td>
+      <td style="font-size:10px;color:${vtData?.tags?.length ? 'var(--critical)' : 'var(--muted)'};">${tags}</td>
+      <td>${riskBadge(risk)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderVT(vtEnrichment) {
+  const targets = Object.entries(vtEnrichment);
+  if (!targets.length) return '<div class="empty">Sin datos de VT</div>';
+  return targets.map(([target, d]) => {
+    if (d.error) return `<tr><td class="td-domain">${target}</td><td colspan="6" style="color:var(--muted);font-size:10px;">${d.error}</td></tr>`;
+    if (!d.found) return `<tr><td class="td-domain">${target}</td><td style="color:var(--muted)">—</td><td colspan="5" style="color:var(--muted)">Sin datos en VT</td></tr>`;
+    const malColor = d.malicious > 0 ? 'var(--critical)' : 'var(--muted2)';
+    const susColor = d.suspicious > 0 ? 'var(--medium)' : 'var(--muted2)';
+    const repColor = d.reputation < 0 ? 'var(--critical)' : d.reputation > 0 ? 'var(--low)' : 'var(--muted2)';
+    return `<tr>
+      <td class="td-domain" title="${target}">${target}</td>
+      <td style="color:var(--info)">${d.type || '—'}</td>
+      <td>${vtScoreCell(d)}</td>
+      <td style="color:${malColor};font-weight:${d.malicious>0?'600':'400'}">${d.malicious}</td>
+      <td style="color:${susColor}">${d.suspicious}</td>
+      <td style="color:${repColor}">${d.reputation}</td>
+      <td style="font-size:10px;color:${d.tags?.length?'var(--critical)':'var(--muted)'};">${d.tags?.join(', ') || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCVEs(cves) {
+  if (!cves.length) return '<div class="empty">Sin CVEs detectados para las tecnologías encontradas</div>';
+  return cves.map(c => {
+    const cvss  = c.cvss_score || 0;
+    const color = cvss >= 9 ? 'var(--critical)' : cvss >= 7 ? 'var(--high)' : cvss >= 4 ? 'var(--medium)' : 'var(--low)';
+    const sev   = cvss >= 9 ? 'critical' : cvss >= 7 ? 'high' : cvss >= 4 ? 'medium' : 'low';
+    const kev   = c.in_cisa_kev
+      ? '<span class="section-badge badge-red" style="display:inline-block">Sí</span>'
+      : '<span class="section-badge badge-gray" style="display:inline-block">No</span>';
+    return `<tr>
+      <td style="color:var(--info)">${c.cve_id || c.id || '—'}</td>
+      <td style="color:var(--muted2);font-family:'Sora',sans-serif;font-size:11px;">${c.description || c.desc || '—'}</td>
+      <td style="color:${color};font-weight:600">${cvss}</td>
+      <td>${kev}</td>
+      <td>${riskBadge(sev)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderThreats(threats) {
+  if (!threats.length) return '<div class="empty" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;">Sin amenazas LATAM activas para este sector</div>';
+  const sevClass = { critical: 'sev-critical', high: 'sev-high', medium: 'sev-medium' };
+  return threats.map(t => `
+    <div class="threat-item">
+      <span class="threat-sev ${sevClass[t.severity] || 'sev-medium'}">${t.severity}</span>
+      <div>
+        <div class="threat-title">${t.title}</div>
+        <div class="threat-desc">${t.description}</div>
+        <div class="threat-meta">${t.source} · ${t.date}${t.cves_linked?.length ? ' · ' + t.cves_linked.join(', ') : ''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function updateBCRA(score, cves) {
+  const critical = cves.filter(c => (c.cvss_score || 0) >= 9).length;
+  const kev      = cves.filter(c => c.in_cisa_kev).length;
+  let msg = '';
+  if (score.total >= 70) {
+    msg = `<strong>Acción urgente requerida.</strong> Score de riesgo ${score.total}/100 supera el umbral aceptable bajo Com. "A" 6375. Remediar en ≤ 15 días.`;
+  } else if (critical > 0 || kev > 0) {
+    msg = `${critical + kev} hallazgo(s) crítico(s) pueden afectar cumplimiento con Com. "A" 6375. <strong>Remediar en ≤ 30 días.</strong>`;
+  } else if (score.total >= 20) {
+    msg = `Hallazgos de riesgo medio detectados. Revisar dentro del ciclo de auditoría según Com. "A" 6375.`;
+  } else {
+    msg = `Sin hallazgos críticos para cumplimiento BCRA. Mantener monitoreo periódico.`;
+  }
+  document.getElementById('bcra-text').innerHTML = msg;
+}
+
+let progressInterval = null;
+
+function startProgress(label) {
+  const wrap  = document.getElementById('progress-wrap');
+  const fill  = document.getElementById('progress-fill');
+  const lbl   = document.getElementById('progress-label');
+  wrap.style.display = 'block';
+  fill.style.width = '0%';
+  lbl.textContent = label;
+  let p = 0;
+  progressInterval = setInterval(() => {
+    p += Math.random() * 4 + 1;
+    if (p > 88) p = 88;
+    fill.style.width = p.toFixed(0) + '%';
+  }, 180);
+}
+
+function endProgress() {
+  clearInterval(progressInterval);
+  const fill = document.getElementById('progress-fill');
+  fill.style.width = '100%';
+  setTimeout(() => {
+    document.getElementById('progress-wrap').style.display = 'none';
+    fill.style.width = '0%';
+  }, 400);
+}
+
+async function runScan() {
+  const domain = document.getElementById('domain-input').value.trim().toLowerCase();
+  if (!domain) { document.getElementById('domain-input').focus(); return; }
+
+  const btn = document.getElementById('btn-scan');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Escaneando...';
+  document.getElementById('results').style.display = 'none';
+
+  const steps = [
+    'Enumerando subdominios...',
+    'Analizando headers HTTP...',
+    'Verificando SSL/TLS...',
+    'Consultando VirusTotal...',
+    'Correlacionando CVEs...',
+    'Calculando score...',
+  ];
+  let stepIdx = 0;
+  startProgress(steps[0]);
+  const stepInterval = setInterval(() => {
+    stepIdx = Math.min(stepIdx + 1, steps.length - 1);
+    document.getElementById('progress-label').textContent = steps[stepIdx];
+  }, 3000);
+
+  try {
+    const resp = await fetch(`${API_BASE}/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    clearInterval(stepInterval);
+    endProgress();
+    renderResults(data);
+  } catch (err) {
+    clearInterval(stepInterval);
+    endProgress();
+    alert(`Error al escanear: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Escanear';
+  }
+}
+
+function renderResults(data) {
+  const vt     = data.vt_enrichment || {};
+  const score  = data.score || {};
+  const subs   = data.subdomains || [];
+  const cves   = data.cves || [];
+  const threats= data.threats || [];
+
+  // Org header
+  document.getElementById('org-domain').textContent = data.domain;
+  document.getElementById('scan-time').textContent = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('score-level-display').innerHTML =
+    `<div style="font-family:var(--mono);font-size:11px;color:var(--muted2);">Score</div>
+     <div style="font-family:var(--mono);font-size:28px;font-weight:500;color:${scoreColor(score.total)}">${score.total}</div>
+     <div style="font-family:var(--mono);font-size:10px;color:${scoreColor(score.total)};letter-spacing:1px;">${RISK_LABELS[score.level] || score.level}</div>`;
+
+  // Score cards
+  document.getElementById('score-grid').innerHTML = renderScoreCards(score);
+
+  // Subdomains badge
+  const highRisk = subs.filter(s => s.risk === 'high' || s.risk === 'critical').length;
+  document.getElementById('sub-badge').textContent = `${subs.length} subdominios`;
+  document.getElementById('sub-badge').className = `section-badge ${highRisk > 0 ? 'badge-red' : 'badge-gray'}`;
+
+  // VT badge
+  const flagged = Object.values(vt).filter(d => d.malicious > 0).length;
+  document.getElementById('vt-badge').textContent = `${Object.keys(vt).length} targets · ${flagged} flagged`;
+  document.getElementById('vt-badge').className = `section-badge ${flagged > 0 ? 'badge-red' : 'badge-gray'}`;
+
+  // CVE badge
+  document.getElementById('cve-badge').textContent = `${cves.length} CVEs`;
+  document.getElementById('cve-badge').className = `section-badge ${cves.length > 0 ? 'badge-amber' : 'badge-green'}`;
+
+  // Threat badge
+  document.getElementById('threat-badge').textContent = `${threats.length} activas`;
+
+  // Tables
+  document.getElementById('tb-subdomains').innerHTML = renderSubdomains(subs, vt);
+  document.getElementById('tb-vt').innerHTML         = renderVT(vt);
+  document.getElementById('tb-cves').innerHTML       = renderCVEs(cves);
+  document.getElementById('threats-list').innerHTML  = renderThreats(threats);
+
+  // BCRA
+  updateBCRA(score, cves);
+
+  // Show
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Enter key
+document.getElementById('domain-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runScan();
+});
+</script>
+</body>
+</html>
